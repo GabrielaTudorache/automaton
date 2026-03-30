@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include "NFA.h"
+#include "LambdaNFA.h"
 
 int main() {
     std::cout<<"Enter the input file name: ";
@@ -14,7 +14,7 @@ int main() {
     std::string type;
     std::cin>>type;
 
-    NFA automaton(f);
+    LambdaNFA automaton(f);
 
     int numar_cuvinte;
     f>>numar_cuvinte;

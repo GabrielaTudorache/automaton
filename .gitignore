@@ -26,6 +26,7 @@
 *.exe
 *.out
 *.app
+/build
 
 # User-specific stuff:
 .idea

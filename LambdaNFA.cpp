@@ -1,10 +1,10 @@
-#include "NFA.h"
+#include "LambdaNFA.h"
 
 #include <stack>
 
 
 
-NFA::NFA(std::ifstream& f) {
+LambdaNFA::LambdaNFA(std::ifstream& f) {
     int n;
     f>>n;
     for (int i = 0; i < n; ++i) {
@@ -19,6 +19,7 @@ NFA::NFA(std::ifstream& f) {
         std::string stare_plecare,stare_finala,litera;
         f>>stare_plecare>>stare_finala>>litera;
         tranzitii[stare_plecare][litera].insert(stare_finala);
+        if (litera != "lambda") alfabet.insert(litera);
     }
 
     f>>stare_initiala;
@@ -32,7 +33,7 @@ NFA::NFA(std::ifstream& f) {
     }
 }
 
-std::set<std::string> NFA::calcul_lambda_inchidere(std::set<std::string> stari) {
+std::set<std::string> LambdaNFA::calcul_lambda_inchidere(std::set<std::string> stari) {
     std::stack<std::string> stiva;
     for (const auto& stare: stari) {
         stiva.push(stare);
@@ -55,7 +56,7 @@ std::set<std::string> NFA::calcul_lambda_inchidere(std::set<std::string> stari) 
     return stari;
 }
 
-std::set<std::string> NFA::actualizare_stari(const std::set<std::string>& stari,const std::string& simbol) {
+std::set<std::string> LambdaNFA::actualizare_stari(const std::set<std::string>& stari,const std::string& simbol) {
     std::set<std::string> rezultat;
 
     for (const auto& stare: stari) {
@@ -70,7 +71,25 @@ std::set<std::string> NFA::actualizare_stari(const std::set<std::string>& stari,
     return rezultat;
 }
 
-std::pair<bool,std::vector<std::string>> NFA::accepta(const std::string &input) {
+bool LambdaNFA::valideaza() {
+    if (stari.empty()) return false;
+    if (alfabet.empty()) return false;
+    if (!stari.contains(stare_initiala)) return false;
+    for (const auto& stare: stari_finale) {
+        if (!stari.contains(stare)) return false;
+    }
+    for (const auto& [stare_sursa, tranzitii_locale]: tranzitii) {
+        if (!stari.contains(stare_sursa)) return false;
+        for (const auto& [simbol, stari_destinatie]: tranzitii_locale) {
+            for (const auto& stare_dest: stari_destinatie) {
+                if (!stari.contains(stare_dest)) return false;
+            }
+        }
+    }
+    return true;
+}
+
+std::pair<bool,std::vector<std::string>> LambdaNFA::accepta(const std::string &input) {
     std::set<std::string> stari_curente = calcul_lambda_inchidere({stare_initiala});
 
     for (const auto& litera: input) {
