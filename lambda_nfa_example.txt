@@ -1,0 +1,15 @@
+4
+q0 q1 q2 q3
+7
+q0 q0 a
+q0 q1 b
+q1 q2 lambda
+q1 q2 m
+q1 q3 lambda
+q3 q0 lambda
+q3 q0 n
+q0
+1
+q2
+2
+aabaabm aaba
