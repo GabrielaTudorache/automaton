@@ -8,6 +8,7 @@
 
 
 class LambdaNFA {
+protected:
     std::set<std::string> stari;
     std::set<std::string> alfabet;
     std::string stare_initiala;
@@ -18,6 +19,7 @@ class LambdaNFA {
     std::set<std::string> actualizare_stari(const std::set<std::string>& stari,const std::string& simbol);
 public:
     LambdaNFA() = default;
+    virtual ~LambdaNFA() = default;
     LambdaNFA(std::ifstream& f);
 
     virtual bool valideaza();

@@ -5,7 +5,11 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_executable(dfa_nfa main.cpp
         LambdaNFA.cpp
-        LambdaNFA.h)
+        LambdaNFA.h
+        NFA.cpp
+        NFA.h
+        DFA.cpp
+        DFA.h)
 
 configure_file(dfa_example.txt dfa_example.txt COPYONLY)
 configure_file(nfa_example.txt nfa_example.txt COPYONLY)
