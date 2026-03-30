@@ -23,6 +23,7 @@ public:
     LambdaNFA(std::ifstream& f);
 
     virtual bool valideaza();
+    const std::set<std::string>& getAlfabet();
     std::pair<bool,std::vector<std::string>> accepta(const std::string& input);
 };
 

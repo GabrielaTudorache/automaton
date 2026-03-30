@@ -34,6 +34,12 @@ int main() {
         return 0;
     }
 
+    std::cout << "Alfabet: ";
+    for (const auto& simbol : automaton->getAlfabet()) {
+        std::cout << simbol << ' ';
+    }
+    std::cout << "\n";
+
     int numar_cuvinte;
     f>>numar_cuvinte;
     for (int i = 0; i < numar_cuvinte; ++i) {

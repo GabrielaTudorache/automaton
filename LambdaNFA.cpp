@@ -89,6 +89,10 @@ bool LambdaNFA::valideaza() {
     return true;
 }
 
+const std::set<std::string>& LambdaNFA::getAlfabet() {
+    return alfabet;
+}
+
 std::pair<bool,std::vector<std::string>> LambdaNFA::accepta(const std::string &input) {
     std::set<std::string> stari_curente = calcul_lambda_inchidere({stare_initiala});
 
