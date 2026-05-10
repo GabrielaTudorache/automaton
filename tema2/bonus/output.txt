@@ -1,0 +1,23 @@
+q0 q1 q2 q3 q4 q5 q6 q7 q8 q9 q10 q11 q12 q13
+a b
+18
+q0 q1 b
+q1 q0 lambda
+q1 q3 lambda
+q2 q0 lambda
+q2 q3 lambda
+q3 q4 lambda
+q4 q5 a
+q5 q12 lambda
+q6 q7 a
+q7 q11 lambda
+q8 q9 b
+q9 q11 lambda
+q10 q6 lambda
+q10 q8 lambda
+q11 q10 lambda
+q11 q13 lambda
+q12 q10 lambda
+q12 q13 lambda
+q2
+q13
