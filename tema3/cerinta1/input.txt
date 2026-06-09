@@ -1,8 +1,8 @@
 S A
 a b
 3
-S aA
-A bA
-A b
+S A
+A AA
+A a
 S
 3

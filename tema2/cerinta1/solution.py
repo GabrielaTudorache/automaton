@@ -9,6 +9,7 @@ def citeste_automat(filename):
     alfabet = set(linii[1].split())
     n = int(linii[2])
 
+    #dictionar de seturi pt ca NFA-ul poate merge in mai multe stari pe acelasi simbol
     tranzitii = {}
     for k in range(n):
         stare_plecare, stare_finala, litera = linii[3 + k].split()
@@ -21,7 +22,16 @@ def citeste_automat(filename):
 
     return stari, alfabet, tranzitii, stare_initiala, stari_finale
 
+#Fac un BFS care urmareste doar tranzitiile lambda.
+#Practic din starea q,unde pot ajunge fara sa citesc nimic? 
+#Toate starile pe care le gasesc astfel le adaug in inchidere, 
+# pentru ca daca pot ajunge acolo fara sa citesc nimic,
+# inseamna ca pot fi considerate echivalente cu starea q.
+# Daca am gasit o stare noua, o adaug in coada ca sa verific si tranzitiile lambda din ea. 
+# Returnez un frozenset pentru ca vreau sa folosesc rezultatul ca si cheie in dictionar.
 
+#Exemplu: Daca din q0 ajungi in q1 prin lambda, si din q1 ajungi in q2 prin lambda,
+# atunci lambda-inchiderea lui q0 = {q0, q1, q2}.
 def calcul_lambda_inchidere(stare, tranzitii):
     inchidere = {stare}
     coada = deque([stare])
@@ -35,7 +45,8 @@ def calcul_lambda_inchidere(stare, tranzitii):
 
     return frozenset(inchidere)
 
-
+# o stare din DFA-ul echivalent e un set de stari din NFA, 
+#care reprezinta toate starile in care poate fi NFA-ul dupa ce citeste un cuvant.
 def constructie_submultimi(stare_initiala, alfabet, tranzitii, stari_finale, inchideri):
     multime_initiala = inchideri[stare_initiala]
 
@@ -47,27 +58,45 @@ def constructie_submultimi(stare_initiala, alfabet, tranzitii, stari_finale, inc
     stari_finale_dfa = set()
 
     while coada:
+        #incep cu prima multime din coada, care reprezinta o stare din DFA
         multime_curenta = coada.popleft()
 
         # o stare DFA e finala daca contine cel putin o stare finala NFA
         if multime_curenta & stari_finale:
             stari_finale_dfa.add(nume[multime_curenta])
 
+        
         for simbol in alfabet:
-            # pas 1: unde ajung pe simbol din oricare stare din multimea curenta
+            # pas 1: pentru fiecare litera din alfabet, calculez unde ajunge DFA-ul
             destinatii_directe = set()
+
+            #din fiecare stare NFA din multimea curenta, vad unde pot ajunge pe simbolul curent
+            # si adun toate destinatiile. 
+            #Daca nici o tranzitie nu este posibila, trec la urmatorul simbol.
+            # (stare moarta care va fi adaugata mai tarziu)
             for stare in multime_curenta:
                 destinatii_directe |= tranzitii.get((stare, simbol), set())
             if not destinatii_directe:
                 continue
 
-            # pas 2: aplicam lambda-inchiderea pe rezultat
+            #Exemplu: mulțimea curenta e {q0, q1}, simbolul e a:
+            #din q0 pe a ajungi in {q1}
+            #din q1 pe a ajungi in {q2}
+            #destinatii_directe = {q1, q2}
+            
+            # pas 2: Aplic lambda-inchiderea pe toate starile din destinatii_directe,
+            # pentru ca DFA-ul poate ajunge acolo fara sa citeasca nimic si trebuie sa includ toate starile.
             multime_urmatoare = set()
             for stare in destinatii_directe:
                 multime_urmatoare |= inchideri[stare]
             multime_urmatoare = frozenset(multime_urmatoare)
 
-            # daca multimea e noua, ii dam un nume si o adaugam in coada
+            #Exemplu: destinatii_directe = {q1, q2}:
+            # inchideri[q1] = {q1}
+            # inchideri[q2] = {q2}
+            # multime_urmatoare = {q1, q2}
+
+            # daca multimea e noua, ii dam un nume si o adaugam in coada ca sa o procesam si pe ea mai tarziu
             if multime_urmatoare not in nume:
                 nume[multime_urmatoare] = f"q{len(nume)}"
                 coada.append(multime_urmatoare)
@@ -76,18 +105,23 @@ def constructie_submultimi(stare_initiala, alfabet, tranzitii, stari_finale, inc
 
     return set(nume.values()), nume[multime_initiala], stari_finale_dfa, tranzitii_dfa
 
-
+#DFA-ul construit poate avea lipsuri, adica combinatii (stare,simbol) fara tranzitie. 
+# Pentru minimizare am nevoie ca functia de tranzitie sa fie totala,
+# adica sa existe o tranzitie pentru orice combinatie stare-simbol.
 def adauga_stare_moarta(stari_dfa, alfabet, tranzitii_dfa):
     # o functie de tranzitie completa este necesara pentru algoritmul de minimizare
     stare_moarta = "DEAD"
     a_fost_folosita = False
 
+    #orice tranzitie care nu exista in DFA duce la starea moarta
     for stare in list(stari_dfa):
         for simbol in alfabet:
             if (stare, simbol) not in tranzitii_dfa:
                 tranzitii_dfa[(stare, simbol)] = stare_moarta
                 a_fost_folosita = True
 
+    #daca starea moarta a fost folosita macar o data,
+    #o adaug in multimea de stari si ii adaug tranzitii catre ea pentru toate simbolurile
     if a_fost_folosita:
         stari_dfa.add(stare_moarta)
         for simbol in alfabet:
@@ -95,10 +129,12 @@ def adauga_stare_moarta(stari_dfa, alfabet, tranzitii_dfa):
 
     return stari_dfa, tranzitii_dfa
 
-
+#Daca exista stari in DFA care nu pot fi atinse din starea initiala, 
+#ele nu afecteaza limbajul recunoscut si pot fi eliminate pentru a simplifica automatul.
 def elimina_inaccesibile(stare_initiala, stari_dfa, tranzitii_dfa, alfabet):
     accesibile = {stare_initiala}
     coada = deque([stare_initiala])
+    #BFS pentru a gasi toate starile accesibile din starea initiala
     while coada:
         stare = coada.popleft()
         for simbol in alfabet:
@@ -106,11 +142,13 @@ def elimina_inaccesibile(stare_initiala, stari_dfa, tranzitii_dfa, alfabet):
             if destinatie and destinatie not in accesibile:
                 accesibile.add(destinatie)
                 coada.append(destinatie)
+    #pastrez doar starile si tranzitiile accesibile, restul le elimin
     tranzitii_noii = {}
     for (stare, simbol), destinatie in tranzitii_dfa.items():
         if stare in accesibile:
             tranzitii_noii[(stare, simbol)] = destinatie
     return accesibile, tranzitii_noii
+
 
 
 def minimizeaza(
@@ -156,6 +194,9 @@ def minimizeaza(
             for grup_nou in impartiri.values():
                 noua_partitie.append(frozenset(grup_nou))
 
+        #Exemplu: pe a ajunge în grupa 0, pe b ajunge în grupa 1 → semnatura = (0, 1).
+        #Daca doua stari din aceeasi grupa au semnaturi diferite, ele nu sunt echivalente deci grupa se sparge.
+
         partitie = noua_partitie
         if not s_a_schimbat:
             break
@@ -180,7 +221,8 @@ def minimizeaza(
         nume_partitie[s] for s in stari_finale_dfa if s in nume_partitie
     }
 
-    # construim tranzitiile: luam un reprezentant din fiecare grup (toate starile din grup au tranzitii echivalente)
+    # construim tranzitiile: luam un reprezentant din fiecare grup
+    # (toate starile din grup au tranzitii echivalente)
     tranzitii_min = {}
     for grup in ordonate:
         reprezentant = min(grup)
@@ -192,7 +234,7 @@ def minimizeaza(
 
     return stari_min, stare_initiala_min, stari_finale_min, tranzitii_min
 
-
+#Scrierea in fisier 
 def formateaza_dfa(stari, stare_initiala, stari_finale, tranzitii, alfabet):
     linii = [
         " ".join(sorted(stari)),

@@ -39,7 +39,7 @@ def star(r):
     return ("star", r)
 
 
-# precedenta: union < concat < star < atom (literal/paranteza)
+# ordinea: union < concat < star < atom 
 PREC_UNION = 0
 PREC_CONCAT = 1
 PREC_STAR = 2
@@ -60,11 +60,15 @@ def formateaza(r):
     if r[0] == "sym":
         return r[1], PREC_ATOM
     if r[0] == "star":
+        #daca are precendenta mai mica decat star(union sau concat) pune paranteze.
+        # Exemplu: (a|b)*, nu a|b*
         s, p = formateaza(r[1])
         if p < PREC_STAR:
             s = f"({s})"
         return f"{s}*", PREC_STAR
     if r[0] == "concat":
+        #daca oricare parte e union o inconjoara cu paranteze. 
+        # Exemplu: (a|b)c, nu a|bc
         s1, p1 = formateaza(r[1])
         s2, p2 = formateaza(r[2])
         if p1 < PREC_CONCAT:
@@ -80,6 +84,7 @@ def formateaza(r):
 
 
 def citeste_automat(filename):
+    #citesc starile, alfabetul, tranzitiile, starea initiala si starile finale din fisier.
     with open(filename) as f:
         linii = [line.strip() for line in f if line.strip()]
 
@@ -87,8 +92,12 @@ def citeste_automat(filename):
     alfabet = set(linii[1].split())
     n = int(linii[2])
 
+    #nu stochez tranzitii (stare,simbol) -> stare , ci etichete pe muchii 
+    # (stare_plecare, stare_finala) → expresie_regulata. 
+    # Daca exista deja o muchie p → q, facem union — muchia devine a|b daca exista doua tranzitii separate.
+
     # R[(p, q)] = expresia regulata curenta pentru muchia p -> q
-    # daca o pereche nu apare in dict, eticheta e EMPTY (limbaj vid)
+    # daca o pereche nu apare in dict, eticheta e EMPTY 
     R = {}
     for k in range(n):
         stare_plecare, stare_finala, simbol = linii[3 + k].split()
@@ -107,7 +116,8 @@ def citeste_automat(filename):
 
     return stari, alfabet, R, stare_initiala, stari_finale
 
-
+#generez un nume unic care nu exista deja. Adica ia toate pefixele S0,S1... pana gaseste unul liber.
+# Astfel nu suprascriu stari existente
 def nume_unic(prefix, stari):
     i = 0
     while f"{prefix}{i}" in stari:
@@ -117,7 +127,8 @@ def nume_unic(prefix, stari):
 
 def adauga_stari_auxiliare(stari, R, stare_initiala, stari_finale):
     # vrem o singura intrare si o singura iesire, ca la final raspunsul sa fie exact R[(q_start, q_final)]
-    # legam q_start de vechea stare initiala printr-o muchie lambda, si fiecare veche stare finala de q_final la fel
+    # legam q_start de vechea stare initiala printr-o muchie lambda, 
+    # si fiecare veche stare finala de q_final la fel
     q_start = nume_unic("S", stari)
     stari.add(q_start)
     q_final = nume_unic("F", stari)
@@ -129,26 +140,33 @@ def adauga_stari_auxiliare(stari, R, stare_initiala, stari_finale):
 
     return q_start, q_final
 
+# Acum avem q_start --lambda--> [automatul original] --lambda--> q_final
 
+#scoate starea q si traseaza scurtaturi directe
 def elimina_stare(R, stari, q):
+    #verific daca exista bucla la q, daca nu e EMPTY,
+    #o pun la puterea star pentru a putea fi folosita de fiecare data cand trecem prin q
     bucla = R.get((q, q), EMPTY)
     star_bucla = star(bucla)
 
+    #gasim toate starile care intra in q si toate care ies din q
     predecesori = [p for p in stari if p != q and R.get((p, q), EMPTY) != EMPTY]
     succesori = [r for r in stari if r != q and R.get((q, r), EMPTY) != EMPTY]
 
+    #Pentru fiecare pereche (p, r), scurtatura este:
+    #R[(p,q)] · R[(q,q)]* · R[(q,r)]
     for p in predecesori:
         for r in succesori:
-            # drumul p -> q -> (self-loop la q) -> r devine o noua eticheta directa p -> r
             drum_prin_q = concat(R[(p, q)], concat(star_bucla, R[(q, r)]))
             existent = R.get((p, r), EMPTY)
             R[(p, r)] = union(existent, drum_prin_q)
 
+    #elimin complet starea q: sterg toate muchiile care intra sau ies din q
     chei_de_sters = [cheie for cheie in R if q in cheie]
     for cheie in chei_de_sters:
         del R[cheie]
 
-
+#la final ramane doar q_start si q_final cu o singura muchie intre ele care e expresia regulata
 def state_elimination(stari, R, q_start, q_final):
     # eliminam pe rand toate starile intermediare (in ordine sortata)
     intermediare = sorted(stari - {q_start, q_final})

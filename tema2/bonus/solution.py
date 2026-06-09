@@ -1,8 +1,9 @@
 LAMBDA = ("lambda",)
+#am acelasi sistem de date ca in cerinta2
 
-
-# constructori cu simplificare automata: elimina noduri redundante in AST,
-# ca sa nu generam stari Thompson inutile pentru concat-uri cu lambda etc.
+# constructori cu simplificare automata
+# diferenta e ca la concat si union nu mai au cazul empty(nu generam expresii vide, 
+# plecam de la un string valid)
 def concat(r1, r2):
     if r1 == LAMBDA:
         return r2
@@ -48,7 +49,10 @@ def tokenizeaza(regex):
             i += 1
     return tokeni
 
+#Exemplu: "ab|c*" → [("sym","a"), ("sym","b"), ("|",), ("sym","c"), ("*",)]
 
+#parcurg tokeni si colectez toate simblourile de tip "sym" - necesar pt a stii ce litere
+#apar in expresie
 def alfabet_din_tokeni(tokeni):
     alfabet = set()
     for t in tokeni:
@@ -58,8 +62,9 @@ def alfabet_din_tokeni(tokeni):
 
 
 def insereaza_concat(tokeni):
-    # un atom e o subexpresie regex care evalueaza la o singura valoare:
-    # un simbol, lambda, sau orice intre paranteze, posibil cu * la coada.
+    # un atom e o subexpresie care produce o singura valoare .Poate incheia cu:
+    # un simbol, lambda,orice intre paranteze,sau * . Poate deschide cu simbol, lambda,
+    #sau paranteza deschisa.
     # intre doua atomuri adiacente trebuie un concat implicit, marcat cu "."
     inchide_atom = {"sym", "lambda", ")", "*"}
     deschide_atom = {"sym", "lambda", "("}
@@ -70,24 +75,30 @@ def insereaza_concat(tokeni):
         rezultat.append(t)
     return rezultat
 
+#Exemplu: [("sym","a"), ("sym","b")] → [("sym","a"), (".",), ("sym","b")]
 
-# precedenta operatorilor: | < concat < *
+# ordinea operatorilor: | < concat < *
 PRECEDENTA = {"|": 1, ".": 2, "*": 3}
 
-
+#converteste expresia din scrierea umana intr-o scriere mai usor de procesat de calculator
 def shunting_yard(tokeni):
     iesire = []
     stiva = []
     for t in tokeni:
         tip = t[0]
+        #Operanzii (simboluri, lambda) merg direct în output
         if tip in ("sym", "lambda"):
             iesire.append(t)
+        #paranteza deschisa se pune pe stiva
         elif tip == "(":
             stiva.append(t)
+        #paranteza inchisa scoate toti operatorii pana la paranteza deschisa
         elif tip == ")":
             while stiva[-1][0] != "(":
                 iesire.append(stiva.pop())
             stiva.pop()
+        #Cand gasim un operator, scoatem din stiva in output toti operatorii cu precedenta
+        #mai mare sau egala, apoi punem operatorul curent pe stiva.
         else:
             while (
                 stiva
@@ -96,22 +107,28 @@ def shunting_yard(tokeni):
             ):
                 iesire.append(stiva.pop())
             stiva.append(t)
+
     while stiva:
         iesire.append(stiva.pop())
     return iesire
 
+#Exemplu: a.(b|c)* → a b c | * .
 
 def construieste_ast(postfix):
     # daca expresia e vida, tratam ca {lambda} (accepta doar cuvantul vid)
     if not postfix:
         return LAMBDA
     stiva = []
+
+    #Operanzii se pun pe stiva
     for t in postfix:
         tip = t[0]
         if tip == "sym":
             stiva.append(("sym", t[1]))
         elif tip == "lambda":
             stiva.append(LAMBDA)
+        #Operatorii unari (*) iau un operand, cei binari (., |) iau doi. Ordinea conteaza:
+        #r2 se scoate primul din stiva, r1 al doilea.
         elif tip == "*":
             stiva.append(star(stiva.pop()))
         elif tip == ".":
@@ -123,14 +140,15 @@ def construieste_ast(postfix):
             r1 = stiva.pop()
             stiva.append(union(r1, r2))
     return stiva[0]
+    #la final pe stiva ramane doar radacina arborelui
 
-
+#generez un nume unic
 def nume_stare_noua(stari):
     nume = f"q{len(stari)}"
     stari.add(nume)
     return nume
 
-
+#adaug tranzitia in dictionar 
 def adauga_tranzitie(tranzitii, stare_plecare, stare_finala, simbol):
     cheie = (stare_plecare, simbol)
     if cheie not in tranzitii:
@@ -141,24 +159,29 @@ def adauga_tranzitie(tranzitii, stare_plecare, stare_finala, simbol):
 # constructia Thompson: pentru fiecare nod returnam (stare_intrare, stare_iesire)
 # si adaugam stari/tranzitii
 def thompson(r, stari, tranzitii):
+    #s --lambda--> f
     if r == LAMBDA:
         s = nume_stare_noua(stari)
         f = nume_stare_noua(stari)
         adauga_tranzitie(tranzitii, s, f, "lambda")
         return s, f
-
+    #s --a--> f
     if r[0] == "sym":
         s = nume_stare_noua(stari)
         f = nume_stare_noua(stari)
         adauga_tranzitie(tranzitii, s, f, r[1])
         return s, f
 
+    #Construieste fragmentele pentru r1 si r2, le leaga cu lambda. Iesirea lui r1
+    #devine intrarea lui r2.
+    #s1 --[r1]--> f1 --lambda--> s2 --[r2]--> f2
     if r[0] == "concat":
         s1, f1 = thompson(r[1], stari, tranzitii)
         s2, f2 = thompson(r[2], stari, tranzitii)
         adauga_tranzitie(tranzitii, f1, s2, "lambda")
         return s1, f2
 
+    #stare noua s cu lambda spre ambele fragmente, ambeloe ies prin lambda spre starea noua f
     if r[0] == "union":
         s1, f1 = thompson(r[1], stari, tranzitii)
         s2, f2 = thompson(r[2], stari, tranzitii)
@@ -193,7 +216,7 @@ def cheie_stare(nume):
     prefix, sufix = nume[:i], nume[i:]
     return (prefix, int(sufix) if sufix else 0)
 
-
+#foloseste cheie_stare pentru a sorta starile in output intr-o ordine naturala (q1, q2, q10, nu q1, q10, q2)
 def cheie_muchie(muchie):
     stare_p, stare_f, simbol = muchie
     return (cheie_stare(stare_p), cheie_stare(stare_f), simbol)

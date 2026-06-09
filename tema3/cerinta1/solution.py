@@ -25,11 +25,11 @@ def citire(filename):
 
     return neterminale, terminale, productii, simbol_start, lungime
 
-
+#calculez pentru fiecare neterminal cate terminale minim poate genera
+#rezultat folosit ca sa omor mai devreme ramurile fara speranta
 def lungimi_minime(neterminale, terminale, productii):
     # lungime_minima[N] = numarul minim de terminale care pot fi derivate din N
     # un terminal contribuie cu 1, lambda cu 0
-    # inf = necunoscut
     lungime_minima = {N: float("inf") for N in neterminale}
 
     schimbat = True
@@ -46,15 +46,23 @@ def lungimi_minime(neterminale, terminale, productii):
 
     return lungime_minima
 
-
+#Calculeaza lungimea minima a unui cuvant care poate fi derivat dintr-o forma
+# de genul : sir de simboluri mixte — terminale + neterminale. Sumeaza 1 pentru
+#fiecare terminal si lungime_minima[N] pentru fiecare neterminal.
 def lungime_minima_forma(forma, terminale, lungime_minima):
     total = 0
     for simbol in forma:
         total += 1 if simbol in terminale else lungime_minima[simbol]
     return total
 
-
+#Genereaza toate cuvintele de lungime exacta derivabile din simbol_start.
+#Foloseste BFS cu derivare la stanga (inlocuieste intotdeauna primul neterminal
+#din forma). Daca lungimea minima a formei curente depaseste
+#lungimea, ramura e taiata. La final, colecteaza formele care au ajuns la
+#lungimea exacta ceruta si contin doar terminale.
 def genereaza(neterminale, terminale, productii, simbol_start, lungime):
+    #calculeaza in avans lungimea maxima pentru fiecare neterminal, ca sa pot taia 
+    # ramurile fara speranta mai devreme
     lungime_minima = lungimi_minime(neterminale, terminale, productii)
 
     cuvinte = set()
@@ -62,6 +70,9 @@ def genereaza(neterminale, terminale, productii, simbol_start, lungime):
     coada = deque([forma_initiala])
     vizitate = {forma_initiala}
 
+
+    #Daca nu am gasit niciun neterminal, forma contine doar terminale — e un cuvant
+    #complet. Daca are exact lungimea ceruta, il adaugam in rezultate. Altfel il ignoram.
     while coada:
         forma = coada.popleft()
 
@@ -76,6 +87,9 @@ def genereaza(neterminale, terminale, productii, simbol_start, lungime):
                 cuvinte.add("".join(forma))
             continue
 
+        
+        #Luam neterminalul gasit si incercam toate productiile posibile pentru el.
+        #Construim forma_noua inlocuind neterminalul cu ce produce.
         neterminal = forma[pozitie]
         for sir_simboluri in productii.get(neterminal, []):
             forma_noua = forma[:pozitie] + sir_simboluri + forma[pozitie + 1 :]
@@ -83,10 +97,13 @@ def genereaza(neterminale, terminale, productii, simbol_start, lungime):
             # taiem derivarile care nu mai pot ajunge la lungimea ceruta
             if lungime_minima_forma(forma_noua, terminale, lungime_minima) > lungime:
                 continue
-
+            #daca forma nu a mai fost vasuta o adaugam in coada ca sa o procesam mai tarziu
             if forma_noua not in vizitate:
                 vizitate.add(forma_noua)
                 coada.append(forma_noua)
+
+            #Exemplu: daca forma = ('a', 'S', 'b') si productia e S -> cd, 
+            # obtinem forma_noua = ('a', 'c', 'd', 'b').
 
     return cuvinte
 

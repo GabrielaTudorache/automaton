@@ -34,6 +34,12 @@ def citire(filename):
         cuvant,
     )
 
+#Exemplu: daca avem S -> AB si S -> a:
+# productii_terminale = {'a': {'S'}}
+# productii_binare    = [('S', 'A', 'B')]
+
+
+
 
 def cyk(productii_terminale, productii_binare, cuvant):
     n = len(cuvant)
@@ -45,6 +51,13 @@ def cyk(productii_terminale, productii_binare, cuvant):
     for start in range(n):
         tabela[1][start] = set(productii_terminale.get(cuvant[start], set()))
 
+    #Pentru fiecare caracter din cuvant, punem in tabela neterminalele care produc acel caracter.
+
+  #Exemplu pentru cuvantul abc:
+  #tabela[1][0] = neterminalele care produc 'a'
+  #tabela[1][1] = neterminalele care produc 'b'
+  #tabela[1][2] = neterminalele care produc 'c'
+
     for lungime in range(2, n + 1):
         for start in range(n - lungime + 1):
             for taietura in range(1, lungime):
@@ -54,9 +67,27 @@ def cyk(productii_terminale, productii_binare, cuvant):
                     if B in stanga and C in dreapta:
                         tabela[lungime][start].add(A)
 
+    #Pentru fiecare subsir de lungime lungime care incepe la start, incercam toate
+  #taieturile posibile — il impartim in doua bucati si vedem ce neterminale pot
+  #produce fiecare bucata.
+
+  #Exemplu: pentru cuvantul abcd, subsir abc (start=0, lungime=3):
+
+  #taietura=1: stanga = tabela[1][0] (cine produce 'a')
+  #           dreapta = tabela[2][1] (cine produce 'bc')
+
+  #taietura=2: stanga = tabela[2][0] (cine produce 'ab')
+  #           dreapta = tabela[1][2] (cine produce 'c')
+
+  #Daca gasim o regula A -> B C unde B e in stanga si C e in dreapta, atunci A poate
+  # produce subsirul abc : il adaugam in tabela[3][0].
+
+
+
     return tabela
 
-
+#Fiecare rand corespunde unei lungimi, fiecare
+#coloana unui subsir. Daca nicio neterminal nu poate produce acel subsir, afiseaza "-" 
 def output(tabela, cuvant):
     n = len(cuvant)
     linii = []

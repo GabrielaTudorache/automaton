@@ -23,7 +23,7 @@ def citire(filename):
 
     return neterminale, terminale, productii, simbol_start
 
-
+#gaseste neterminalele anilabile - cele care pot produce lambda direct sau indirect 
 def calcul_anulabile(neterminale, productii):
     # N este anulabil daca N -> lambda sau N -> sir de neterminale toate anulabile
     anulabile = set()
@@ -58,9 +58,14 @@ def elimina_lambda(productii, anulabile):
                     productii_noi.add((stanga, tuple(varianta)))
     return productii_noi
 
+#Exemplu: daca B e anulabil si avem A -> aBc, generam si varianta A -> ac (ca si
+#cum B ar fi disparut).
 
 def elimina_unitare(neterminale, productii):
-    # perechi unitare (A, B) inseamna ca A => B prin productii unitare
+    # pasul 1: gasim toate perechile (A, B) unde A =>* B
+  #perechi = {(N, N) for N in neterminale}  
+  #fiecare neterminal ajunge la el insusi
+
     perechi = {(N, N) for N in neterminale}
     schimbat = True
     while schimbat:
@@ -70,10 +75,10 @@ def elimina_unitare(neterminale, productii):
                 B = sir_simboluri[0]
                 for A, X in list(perechi):
                     if X == stanga and (A, B) not in perechi:
-                        perechi.add((A, B))
+                        perechi.add((A, B))# daca A => stanga => B, atunci A => B
                         schimbat = True
 
-    # A primeste toate productiile ne-unitare ale fiecarui B cu (A, B) pereche
+    #pas 2 : A primeste toate productiile ne-unitare ale fiecarui B cu (A, B) pereche
     productii_noi = set()
     for A, B in perechi:
         for stanga, sir_simboluri in productii:
@@ -84,7 +89,12 @@ def elimina_unitare(neterminale, productii):
                 productii_noi.add((A, sir_simboluri))
     return productii_noi
 
+    #Mai intai construieste toate perechile (A, B) unde A poate ajunge la B
+  #printr-un lant de productii unitare
+  # Apoi copiaza productiile "reale" (ne-unitare) ale lui B direct la A
+  #Astfel productiile unitare dispar complet
 
+# Gaseste neterminalele productive — cele care pot genera in final un sir format doar din terminale.
 def elimina_neproductive(neterminale, terminale, productii):
     # un neterminal e productiv daca poate deriva un sir doar de terminale
     productive = set()
@@ -108,7 +118,9 @@ def elimina_neproductive(neterminale, terminale, productii):
             productii_noi.add((stanga, sir_simboluri))
     return productive, productii_noi
 
-
+#BFS pornind din simbolul de start. Gaseste neterminalele accesibile — cele la
+#care se poate ajunge efectiv derivand din start. Orice neterminal care nu apare
+#niciodata in vreo derivare din start e eliminat impreuna cu productiile lui.
 def elimina_inaccesibile(simbol_start, terminale, productii):
     accesibile = {simbol_start}
     coada = deque([simbol_start])
@@ -137,10 +149,15 @@ def nume_neterminal_nou(neterminale, prefix):
     neterminale.add(nume)
     return nume
 
-
+#aducem toate productiile la una din cele doua forme CNF:
+# - A -> a (un singur terminal)
+# - A -> B C (exact doi neterminali)
 def transforma_cnf(neterminale, terminale, productii):
     # pas 1: in productiile cu cel putin doua simboluri,
     # inlocuim fiecare terminal cu un neterminal nou T_a c are are doar productia T_a -> a
+
+    ## A -> aB  devine  A -> T_a B  si  T_a -> a
+
     terminal_la_neterminal = {}
     productii_pas1 = set()
     for stanga, sir_simboluri in productii:
@@ -175,7 +192,7 @@ def transforma_cnf(neterminale, terminale, productii):
 
     return productii_cnf
 
-
+#transforma multimea de productii in linii text de forma A -> B C, sortate alfabetic, pentru output
 def formateaza_gramatica(productii):
     linii = []
     for stanga, sir_simboluri in productii:

@@ -42,7 +42,9 @@ def citeste_pda(filename):
 def este_acceptata(configuratie, stari_finale, mod_acceptare, lungime_intrare):
     stare, pozitie, stiva = configuratie
     if pozitie != lungime_intrare:
+        #trebuie citit tot cuvantul pentru a fi acceptat
         return False
+    #verific conditiile de acceptare in functie de mod_acceptare de la input
     if mod_acceptare == "stare finala":
         return stare in stari_finale
     if mod_acceptare == "stiva goala":
@@ -51,7 +53,7 @@ def este_acceptata(configuratie, stari_finale, mod_acceptare, lungime_intrare):
         return stare in stari_finale and len(stiva) == 0
     raise ValueError(f"mod de acceptare necunoscut: {mod_acceptare}")
 
-
+# calculez toate configuratiile posibile in care ajunge PDA-ul dintr-o configuratie data (un singur pas).
 def succesori(configuratie, delta, sir_intrare):
     stare, pozitie, stiva = configuratie
     # daca stiva e goala, nicio tranzitie nu se mai poate aplica (orice tranzitie cere un varf)
@@ -82,7 +84,7 @@ def succesori(configuratie, delta, sir_intrare):
 
     return rezultate
 
-
+#fac BFS peste toate configuratiile posibile ale PDA-ului
 def simuleaza(
     delta,
     stare_initiala,
@@ -102,15 +104,20 @@ def simuleaza(
         len(sir_intrare) * len(stari) * len(alfabet_stiva) + len(alfabet_stiva) + 1
     )
 
+    #BFS clasic cu multime de configuratii vizitate ca sa nu procesam aceeasi configuratie 
+    # de mai multe ori
     coada = deque([configuratie_initiala])
     vizitate = {configuratie_initiala}
 
     while coada:
         configuratie = coada.popleft()
 
+        #verific pentru fiecare configuratie daca e acceptata
         if este_acceptata(configuratie, stari_finale, mod_acceptare, len(sir_intrare)):
             return True
 
+        #calculez toti succesorii configuratiei curente, si daca nu i-am mai vazut pana acum,
+        #  ii adaug in coada
         for urm in succesori(configuratie, delta, sir_intrare):
             if urm in vizitate:
                 continue
@@ -119,6 +126,7 @@ def simuleaza(
             vizitate.add(urm)
             coada.append(urm)
 
+    #daca coada s-a golit si nu am gasit nici o configuratie de acceptare cuvantul e respins
     return False
 
 
